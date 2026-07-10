@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant POS Equipment Mapper</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* ========== HEADER ========== */
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.5px; white-space: nowrap; }
+        .header-middle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            justify-content: center;
+            min-width: 200px;
+        }
+        .header-middle label { font-size: 12px; opacity: 0.7; white-space: nowrap; }
+        .header-middle input {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 260px;
+            text-align: center;
+        }
+        .header-middle input::placeholder { color: rgba(255,255,255,0.4); }
+        .header-middle input:focus { outline: none; border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.18); }
+        .header-actions { display: flex; gap: 8px; }
+
+        /* ========== TOOLBAR ========== */
+        .toolbar {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .tool-group { display: flex; gap: 6px; align-items: center; }
+        .tool-sep { width: 1px; height: 28px; background: #ccc; margin: 0 4px; }
+
+        .tool-button {
+            padding: 7px 14px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .tool-button:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
+        .tool-button.active { background: #007bff; color: white; }
+        .tool-button:not(.active) { background: white; border: 2px solid #dee2e6; color: #495057; }
+
+        /* ========== CATEGORY SWATCHES ========== */
+        .cat-swatches {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .cat-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .cat-swatch:hover { transform: scale(1.15); }
+        .cat-swatch.selected { border-color: #007bff; box-shadow: 0 0 0 2px #007bff44; }
+        .cat-swatch[title]::after {
+            content: attr(title);
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            white-space: nowrap;
+            color: #666;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .cat-swatch:hover::after { opacity: 1; }
+
+        .add-cat-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px dashed #aaa;
+            background: white;
+            cursor: pointer;
+            font-size: 16px;
+            color: #888;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .add-cat-btn:hover { border-color: #007bff; color: #007bff; transform: scale(1.1); }
+
+        /* ========== LEGEND BAR ========== */
+        .legend-bar {
+            background: #f1f3f5;
+            padding: 8px 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: #555;
+        }
+        .legend-bar-title { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            position: relative;
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.15);
+        }
+        .legend-item .legend-x {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: none;
+            background: #ddd;
+            color: #999;
+            font-size: 9px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            margin-left: 2px;
+        }
+        .legend-item:hover .legend-x.removable { display: flex; }
+        .legend-item .legend-x:hover { background: #dc3545; color: white; }
+
+        /* ========== CANVAS ========== */
+        .canvas-container { position: relative; width: 100%; height: 600px; background: #fff; overflow: hidden; }
+        #canvas { cursor: crosshair; display: block; }
+
+        /* ========== GRID CONTROLS ========== */
+        .grid-controls { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #555; }
+        .grid-slider { width: 80px; }
+
+        /* ========== TUTORIAL ========== */
+        .tutorial {
+            position: fixed; top: 20px; right: 20px;
+            background: rgba(44, 62, 80, 0.95); color: white;
+            padding: 18px; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            max-width: 270px; z-index: 1000;
+            transition: all 0.3s ease; backdrop-filter: blur(8px);
+        }
+        .tutorial.minimized {
+            width: 46px; height: 46px; padding: 0; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px;
+        }
+        .tutorial.minimized .tutorial-content { display: none; }
+        .tutorial.minimized::before { content: "?"; font-weight: bold; }
+        .tutorial h3 { margin-bottom: 10px; font-size: 15px; }
+        .tutorial ul { list-style: none; line-height: 1.5; font-size: 12px; }
+        .tutorial li { margin-bottom: 5px; padding-left: 14px; position: relative; }
+        .tutorial li::before { content: "\2022"; color: #f39c12; position: absolute; left: 0; }
+        .minimize-btn {
+            position: absolute; top: 8px; right: 8px;
+            background: rgba(255,255,255,0.15); border: none; color: white;
+            width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 13px;
+        }
+
+        /* ========== EXPORT BUTTONS ========== */
+        .export-btn {
+            color: white; padding: 8px 16px; border: none; border-radius: 7px;
+            cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s;
+        }
+        .export-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+        .export-png { background: linear-gradient(135deg, #28a745, #20c997); }
+        .export-pdf { background: linear-gradient(135deg, #dc3545, #e74c3c); }
+
+        /* ========== TOAST ========== */
+        .toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: #2c3e50; color: white; padding: 14px 28px; border-radius: 10px;
+            font-size: 14px; font-weight: 500; box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            z-index: 5000; opacity: 0; transition: all 0.35s ease; pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ========== MODALS ========== */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55); display: none; align-items: center;
+            justify-content: center; z-index: 3000; backdrop-filter: blur(3px);
+        }
+        .modal-overlay.active { display: flex; }
+
+        .edit-modal {
+            background: white; padding: 0; border-radius: 16px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+            max-width: 440px; width: 92%; overflow: hidden;
+            animation: modalSlideIn 0.25s ease;
+        }
+        @keyframes modalSlideIn {
+            from { transform: translateY(20px) scale(0.97); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .edit-modal-header {
+            background: linear-gradient(135deg, #2c3e50, #34495e); color: white;
+            padding: 16px 22px; font-size: 16px; font-weight: 600;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .edit-modal-header .close-x {
+            background: rgba(255,255,255,0.15); border: none; color: white;
+            width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+            font-size: 14px; display: flex; align-items: center; justify-content: center;
+        }
+        .edit-modal-body { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label {
+            font-size: 12px; font-weight: 600; color: #495057;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .form-group input[type="text"] {
+            padding: 9px 12px; border: 2px solid #dee2e6; border-radius: 7px;
+            font-size: 14px; transition: border-color 0.2s;
+        }
+        .form-group input[type="text"]:focus { outline: none; border-color: #007bff; }
+
+        /* Category grid in edit modal */
+        .cat-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+        .cat-grid-item {
+            display: flex; align-items: center; gap: 5px; padding: 5px 10px;
+            border: 2px solid #e9ecef; border-radius: 8px; cursor: pointer;
+            font-size: 12px; transition: all 0.15s; background: white;
+        }
+        .cat-grid-item:hover { border-color: #007bff; }
+        .cat-grid-item.selected { border-color: #007bff; background: #eef4ff; }
+        .cat-grid-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+
+        /* Photo upload */
+        .photo-upload-area {
+            border: 2px dashed #ced4da; border-radius: 10px; padding: 18px;
+            text-align: center; cursor: pointer; transition: all 0.2s;
+            background: #f8f9fa; position: relative;
+        }
+        .photo-upload-area:hover { border-color: #007bff; background: #eef4ff; }
+        .photo-upload-area.has-photo { border-style: solid; border-color: #28a745; background: white; padding: 8px; }
+        .photo-upload-area .upload-text { color: #6c757d; font-size: 13px; }
+        .photo-upload-area .upload-text span { font-size: 26px; display: block; margin-bottom: 4px; }
+        .photo-upload-area img { max-width: 100%; max-height: 180px; border-radius: 6px; display: block; margin: 0 auto; }
+        .photo-upload-area input[type="file"] { display: none; }
+        .remove-photo-btn {
+            position: absolute; top: 5px; right: 5px; background: #dc3545; color: white;
+            border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+            font-size: 13px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(220,53,69,0.4);
+        }
+
+        /* Modal footer */
+        .edit-modal-footer {
+            padding: 14px 22px; border-top: 1px solid #e9ecef;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-btn {
+            padding: 9px 20px; border: none; border-radius: 7px; cursor: pointer;
+            font-size: 13px; font-weight: 500; transition: all 0.15s;
+        }
+        .modal-btn:hover { transform: translateY(-1px); }
+        .modal-btn.save { background: #007bff; color: white; }
+        .modal-btn.cancel { background: #e9ecef; color: #495057; }
+        .modal-btn.delete { background: #dc3545; color: white; }
+        .modal-footer-right { display: flex; gap: 6px; }
+
+        /* Long press spinner */
+        .long-press-indicator {
+            position: fixed; width: 50px; height: 50px; border-radius: 50%;
+            border: 3px solid #007bff; border-top-color: transparent;
+            animation: lpSpin 0.8s linear infinite;
+            pointer-events: none; z-index: 2000; display: none;
+        }
+        .long-press-indicator.active { display: block; }
+        @keyframes lpSpin { to { transform: rotate(360deg); } }
+
+        /* Add custom color modal extras */
+        .custom-color-row { display: flex; gap: 10px; align-items: center; }
+        .custom-color-row input[type="color"] {
+            width: 44px; height: 36px; border: none; border-radius: 6px; cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header h1 { font-size: 14px; }
+            .header-middle input { width: 160px; }
+            .toolbar { padding: 8px 12px; }
+            .canvas-container { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🍽️ POS Equipment Mapper</h1>
+            <div class="header-middle">
+                <label>Business:</label>
+                <input type="text" id="businessName" placeholder="Enter Business Name..." oninput="saveBusinessName()">
+            </div>
+            <div class="header-actions">
+                <button class="export-btn export-png" onclick="exportToPNG()">📸 PNG</button>
+                <button class="export-btn export-pdf" onclick="exportToPDF()">📄 PDF</button>
+            </div>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="toolbar">
+            <div class="tool-group">
+                <button class="tool-button active" onclick="setTool('pin')" data-tool="pin">📌 Place Pins</button>
+                <button class="tool-button" onclick="setTool('line')" data-tool="line">📏 Draw Lines</button>
+            </div>
+            <div class="tool-sep"></div>
+            <div class="cat-swatches" id="catSwatches"></div>
+            <button class="add-cat-btn" onclick="openAddCategoryModal()" title="Add Custom Color">+</button>
+            <div class="tool-sep"></div>
+            <div class="tool-group grid-controls">
+                <label>Grid:</label>
+                <input type="range" class="grid-slider" id="gridSize" min="10" max="50" value="20" oninput="updateGrid()">
+                <button class="tool-button" onclick="toggleGrid()" id="gridToggle" style="padding:6px 10px;">🔲 ON</button>
+            </div>
+        </div>
+
+        <!-- LEGEND BAR -->
+        <div class="legend-bar" id="legendBar">
+            <span class="legend-bar-title">Legend:</span>
+        </div>
+
+        <!-- CANVAS -->
+        <div class="canvas-container">
+            <canvas id="canvas" width="1340" height="600"></canvas>
+        </div>
+    </div>
+
+    <!-- Tutorial -->
+    <div class="tutorial" id="tutorial">
+        <button class="minimize-btn" onclick="toggleTutorial()">-</button>
+        <div class="tutorial-content">
+            <h3>How to Use</h3>
+            <ul>
+                <li><strong>Click canvas:</strong> Place a pin</li>
+                <li><strong>Select color:</strong> Pick category first</li>
+                <li><strong>Double-click pin:</strong> Quick-label</li>
+                <li><strong>Long-hold pin:</strong> Edit / Photo / Delete</li>
+                <li><strong>Line mode:</strong> Click two pins to connect</li>
+                <li><strong>+ button:</strong> Add custom legend color</li>
+                <li><strong>Export PDF:</strong> Map + legend + photos</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Long-press spinner -->
+    <div class="long-press-indicator" id="longPressIndicator"></div>
+
+    <!-- Edit Pin Modal -->
+    <div class="modal-overlay" id="editModalOverlay">
+        <div class="edit-modal">
+            <div class="edit-modal-header">
+                <span>Edit Pin</span>
+                <button class="close-x" onclick="closeEditModal()">&#x2715;</button>
+            </div>
+            <div class="edit-modal-body">
+                <div class="form-group">
+                    <label>Label</label>
+                    <input type="text" id="editLabel" placeholder="e.g. POS Station 1, Kitchen Printer...">
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <div class="cat-grid" id="editCatGrid"></div>
+                </div>
+                <div class="form-group">
+                    <label>Photo</label>
+                    <div class="photo-upload-area" id="photoUploadArea" onclick="triggerPhotoUpload()">
+                        <div class="upload-text" id="uploadText">
+                            <span>&#128247;</span>Click or tap to upload a photo
+                        </div>
+                        <img id="photoPreview" style="display:none;">
+                        <button class="remove-photo-btn" id="removePhotoBtn" style="display:none;" onclick="event.stopPropagation(); removePhoto();">&#x2715;</button>
+                        <input type="file" id="photoFileInput" accept="image/*" onchange="handlePhotoUpload(event)">
+                    </div>
+                </div>
+            </div>
+            <div class="edit-modal-footer">
+                <button class="modal-btn delete" onclick="deleteCurrentPin()">Delete</button>
+                <div class="modal-footer-right">
+                    <button class="modal-btn cancel" onclick="closeEditModal()">Cancel</button>
+                    <button class="modal-btn save" onclick="saveEditModal()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick-label Modal -->
+    <div class="modal-overlay" id="quickLabelOverlay">
+        <div class="edit-modal" style="max-width:360px;">
+            <div class="edit-modal-header">
+                <span>Quick Label</span>
+                <button class="close-x" onclick="closeQuickLabel()">&#x2715;</button>
+            </div>
+            <div class="edit-modal-body">
+                <div class="form-group">
+                    <label>Label</label>
+                    <input type="text" id="quickLabelInput" placeholder="Enter label...">
+                </div>
+            </div>
+            <div class="edit-modal-footer" style="justify-content:flex-end;">
+                <div class="modal-footer-right">
+                    <button class="modal-btn cancel" onclick="closeQuickLabel()">Cancel</button>
+                    <button class="modal-btn save" onclick="saveQuickLabel()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Custom Category Modal -->
+    <div class="modal-overlay" id="addCatOverlay">
+        <div class="edit-modal" style="max-width:380px;">
+            <div class="edit-modal-header">
+                <span>Add Custom Color</span>
+                <button class="close-x" onclick="closeAddCatModal()">&#x2715;</button>
+            </div>
+            <div class="edit-modal-body">
+                <div class="form-group">
+                    <label>Category Name</label>
+                    <input type="text" id="newCatName" placeholder="e.g. Networking Equipment">
+                </div>
+                <div class="form-group">
+                    <label>Color</label>
+                    <div class="custom-color-row">
+                        <input type="color" id="newCatColor" value="#ff8800">
+                        <span id="newCatColorHex" style="font-size:13px;color:#888;">#ff8800</span>
+                    </div>
+                </div>
+            </div>
+            <div class="edit-modal-footer" style="justify-content:flex-end;">
+                <div class="modal-footer-right">
+                    <button class="modal-btn cancel" onclick="closeAddCatModal()">Cancel</button>
+                    <button class="modal-btn save" onclick="saveNewCategory()">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        /* ========================================================
+           LEGEND / CATEGORY SYSTEM  (persistent via localStorage)
+        ======================================================== */
+        const LS_LEGEND_KEY = 'pos-mapper-legend-v1';
+        const LS_BUSINESS_KEY = 'pos-mapper-business';
+
+        const DEFAULT_CATEGORIES = [
+            { id: 'cable',    name: 'Cable Lines',       color: '#dc3545', builtin: true },
+            { id: 'photo',    name: 'General Pictures',  color: '#28a745', builtin: true },
+            { id: 'pos',      name: 'POS Stations',      color: '#fd7e14', builtin: true },
+            { id: 'display',  name: 'Displays / Misc',   color: '#8b5cf6', builtin: true },
+            { id: 'kprinter', name: 'Kitchen Printers',  color: '#17a2b8', builtin: true },
+            { id: 'rprinter', name: 'Receipt Printers',  color: '#0d47a1', builtin: true },
+        ];
+
+        function loadCategories() {
+            try {
+                const stored = JSON.parse(localStorage.getItem(LS_LEGEND_KEY));
+                if (stored && Array.isArray(stored) && stored.length > 0) return stored;
+            } catch(e) {}
+            return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        }
+
+        function saveCategories() {
+            localStorage.setItem(LS_LEGEND_KEY, JSON.stringify(categories));
+        }
+
+        let categories = loadCategories();
+        let selectedCategoryId = categories[0].id;
+
+        function getCategory(id) {
+            return categories.find(function(c) { return c.id === id; }) || categories[0];
+        }
+
+        function getCategoryByColor(hex) {
+            return categories.find(function(c) { return c.color.toLowerCase() === hex.toLowerCase(); });
+        }
+
+        /* ========================================================
+           BUSINESS NAME (persistent)
+        ======================================================== */
+        function loadBusinessName() {
+            return localStorage.getItem(LS_BUSINESS_KEY) || '';
+        }
+        function saveBusinessName() {
+            var v = document.getElementById('businessName').value.trim();
+            localStorage.setItem(LS_BUSINESS_KEY, v);
+        }
+
+        /* ========================================================
+           RENDER TOOLBAR SWATCHES
+        ======================================================== */
+        function renderSwatches() {
+            var container = document.getElementById('catSwatches');
+            container.innerHTML = '';
+            categories.forEach(function(cat) {
+                var el = document.createElement('div');
+                el.className = 'cat-swatch' + (cat.id === selectedCategoryId ? ' selected' : '');
+                el.style.background = cat.color;
+                el.title = cat.name;
+                el.onclick = (function(catId) {
+                    return function() {
+                        selectedCategoryId = catId;
+                        setTool('pin');
+                        renderSwatches();
+                    };
+                })(cat.id);
+                container.appendChild(el);
+            });
+        }
+
+        /* ========================================================
+           RENDER LEGEND BAR
+        ======================================================== */
+        function renderLegendBar() {
+            var bar = document.getElementById('legendBar');
+            bar.innerHTML = '<span class="legend-bar-title">Legend:</span>';
+            categories.forEach(function(cat) {
+                var item = document.createElement('span');
+                item.className = 'legend-item';
+
+                var dot = document.createElement('span');
+                dot.className = 'legend-dot';
+                dot.style.background = cat.color;
+                item.appendChild(dot);
+
+                var lbl = document.createElement('span');
+                lbl.textContent = cat.name;
+                item.appendChild(lbl);
+
+                if (!cat.builtin) {
+                    var x = document.createElement('button');
+                    x.className = 'legend-x removable';
+                    x.innerHTML = '&#x2715;';
+                    x.onclick = (function(catId) {
+                        return function(e) {
+                            e.stopPropagation();
+                            removeCategory(catId);
+                        };
+                    })(cat.id);
+                    item.appendChild(x);
+                }
+
+                bar.appendChild(item);
+            });
+        }
+
+        function removeCategory(id) {
+            categories = categories.filter(function(c) { return c.id !== id; });
+            if (selectedCategoryId === id) selectedCategoryId = categories[0].id;
+            saveCategories();
+            renderSwatches();
+            renderLegendBar();
+            showToast('Category removed');
+        }
+
+        /* ========================================================
+           ADD CUSTOM CATEGORY MODAL
+        ======================================================== */
+        function openAddCategoryModal() {
+            document.getElementById('newCatName').value = '';
+            document.getElementById('newCatColor').value = '#ff8800';
+            document.getElementById('newCatColorHex').textContent = '#ff8800';
+            document.getElementById('addCatOverlay').classList.add('active');
+            setTimeout(function() { document.getElementById('newCatName').focus(); }, 50);
+        }
+        function closeAddCatModal() {
+            document.getElementById('addCatOverlay').classList.remove('active');
+        }
+        document.getElementById('newCatColor').addEventListener('input', function(e) {
+            document.getElementById('newCatColorHex').textContent = e.target.value;
+        });
+        function saveNewCategory() {
+            var name = document.getElementById('newCatName').value.trim();
+            var color = document.getElementById('newCatColor').value;
+            if (!name) { showToast('Enter a category name'); return; }
+            var id = 'custom_' + Date.now();
+            categories.push({ id: id, name: name, color: color, builtin: false });
+            saveCategories();
+            selectedCategoryId = id;
+            renderSwatches();
+            renderLegendBar();
+            closeAddCatModal();
+            showToast('Category added: ' + name);
+        }
+        document.getElementById('newCatName').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') saveNewCategory();
+        });
+
+        /* ========================================================
+           CORE STATE
+        ======================================================== */
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+
+        var currentTool = 'pin';
+        var pins = [];
+        var lines = [];
+        var selectedPin = null;
+        var connectingLine = null;
+        var gridSize = 20;
+        var showGrid = true;
+        var longPressTimer = null;
+        var currentEditingPin = null;
+        var tempPhotoData = null;
+        var tempEditColor = null;
+
+        /* ========================================================
+           PIN CLASS
+        ======================================================== */
+        function Pin(x, y, color) {
+            this.id = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+            this.x = x;
+            this.y = y;
+            this.color = color || '#000000';
+            this.label = '';
+            this.radius = 8;
+            this.photo = null;
+            this.photoName = '';
+        }
+
+        Pin.prototype.draw = function(idx) {
+            if (this.photo) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius + 5, 0, 2 * Math.PI);
+                ctx.strokeStyle = 'rgba(0,123,255,0.5)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([3, 3]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            var displayIdx = idx + 1;
+            ctx.fillStyle = this.isLight(this.color) ? '#000' : '#fff';
+            ctx.font = 'bold 9px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(displayIdx, this.x, this.y);
+
+            if (this.label) {
+                ctx.fillStyle = '#222';
+                ctx.font = '11px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(this.label, this.x, this.y - 14);
+            }
+
+            if (this.photo) {
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillText('\uD83D\uDCF7', this.x, this.y + 12);
+            }
+        };
+
+        Pin.prototype.isLight = function(hex) {
+            var r = parseInt(hex.slice(1, 3), 16);
+            var g = parseInt(hex.slice(3, 5), 16);
+            var b = parseInt(hex.slice(5, 7), 16);
+            return (r * 0.299 + g * 0.587 + b * 0.114) > 150;
+        };
+
+        Pin.prototype.contains = function(x, y) {
+            return Math.sqrt((x - this.x) * (x - this.x) + (y - this.y) * (y - this.y)) <= this.radius + 5;
+        };
+
+        /* ========================================================
+           LINE CLASS
+        ======================================================== */
+        function PinLine(startPin, endPin) { this.startPin = startPin; this.endPin = endPin; }
+        PinLine.prototype.draw = function() {
+            ctx.beginPath();
+            ctx.moveTo(this.startPin.x, this.startPin.y);
+            ctx.lineTo(this.endPin.x, this.endPin.y);
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        };
+
+        /* ========================================================
+           RENDERING
+        ======================================================== */
+        function drawGrid() {
+            if (!showGrid) return;
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.save();
+            ctx.translate(0.5, 0.5);
+            for (var x = 0; x <= canvas.width; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (var y = 0; y <= canvas.height; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            lines.forEach(function(l) { l.draw(); });
+            pins.forEach(function(pin, idx) { pin.draw(idx); });
+            if (connectingLine && selectedPin) {
+                ctx.beginPath();
+                ctx.moveTo(selectedPin.x, selectedPin.y);
+                ctx.lineTo(connectingLine.x, connectingLine.y);
+                ctx.strokeStyle = '#007bff';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        /* ========================================================
+           TOOLS
+        ======================================================== */
+        function setTool(tool) {
+            currentTool = tool;
+            selectedPin = null;
+            connectingLine = null;
+            document.querySelectorAll('.tool-button[data-tool]').forEach(function(b) { b.classList.remove('active'); });
+            var btn = document.querySelector('[data-tool="' + tool + '"]');
+            if (btn) btn.classList.add('active');
+            canvas.style.cursor = tool === 'line' ? 'crosshair' : 'pointer';
+        }
+
+        function getMousePos(e) {
+            var rect = canvas.getBoundingClientRect();
+            var scaleX = canvas.width / rect.width;
+            var scaleY = canvas.height / rect.height;
+            return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+        }
+
+        function findPinAt(x, y) {
+            for (var i = pins.length - 1; i >= 0; i--) {
+                if (pins[i].contains(x, y)) return pins[i];
+            }
+            return null;
+        }
+
+        /* ========================================================
+           CANVAS EVENTS
+        ======================================================== */
+        var lpi = document.getElementById('longPressIndicator');
+
+        canvas.addEventListener('mousedown', function(e) {
+            var pos = getMousePos(e);
+            var clickedPin = findPinAt(pos.x, pos.y);
+            if (clickedPin) {
+                lpi.style.left = (e.clientX - 25) + 'px';
+                lpi.style.top = (e.clientY - 25) + 'px';
+                longPressTimer = setTimeout(function() {
+                    lpi.classList.remove('active');
+                    openEditModal(clickedPin);
+                    longPressTimer = null;
+                }, 600);
+                setTimeout(function() { if (longPressTimer) lpi.classList.add('active'); }, 100);
+            }
+        });
+
+        canvas.addEventListener('mouseup', function() {
+            if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+            lpi.classList.remove('active');
+        });
+
+        canvas.addEventListener('mouseleave', function() {
+            if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+            lpi.classList.remove('active');
+        });
+
+        canvas.addEventListener('click', function(e) {
+            if (document.getElementById('editModalOverlay').classList.contains('active')) return;
+            var pos = getMousePos(e);
+            var clickedPin = findPinAt(pos.x, pos.y);
+
+            if (currentTool === 'line') {
+                if (clickedPin) {
+                    if (!selectedPin) { selectedPin = clickedPin; }
+                    else if (selectedPin !== clickedPin) {
+                        lines.push(new PinLine(selectedPin, clickedPin));
+                        selectedPin = null; connectingLine = null; render();
+                    }
+                }
+            } else if (currentTool === 'pin') {
+                if (!clickedPin) {
+                    var cat = getCategory(selectedCategoryId);
+                    var pin = new Pin(pos.x, pos.y, cat.color);
+                    pins.push(pin);
+                    render();
+                }
+            }
+        });
+
+        canvas.addEventListener('dblclick', function(e) {
+            var pos = getMousePos(e);
+            var clickedPin = findPinAt(pos.x, pos.y);
+            if (clickedPin) {
+                currentEditingPin = clickedPin;
+                document.getElementById('quickLabelInput').value = clickedPin.label;
+                document.getElementById('quickLabelOverlay').classList.add('active');
+                setTimeout(function() { document.getElementById('quickLabelInput').focus(); }, 50);
+            }
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            if (currentTool === 'line' && selectedPin) {
+                connectingLine = getMousePos(e);
+                render();
+            }
+        });
+
+        /* ========================================================
+           QUICK-LABEL MODAL
+        ======================================================== */
+        function closeQuickLabel() { document.getElementById('quickLabelOverlay').classList.remove('active'); currentEditingPin = null; }
+        function saveQuickLabel() {
+            if (currentEditingPin) { currentEditingPin.label = document.getElementById('quickLabelInput').value.trim(); render(); showToast('Label saved'); }
+            closeQuickLabel();
+        }
+        document.getElementById('quickLabelInput').addEventListener('keypress', function(e) { if (e.key === 'Enter') saveQuickLabel(); });
+
+        /* ========================================================
+           EDIT MODAL
+        ======================================================== */
+        function buildEditCatGrid() {
+            var grid = document.getElementById('editCatGrid');
+            grid.innerHTML = '';
+            categories.forEach(function(cat) {
+                var item = document.createElement('div');
+                item.className = 'cat-grid-item' + (tempEditColor && tempEditColor.toLowerCase() === cat.color.toLowerCase() ? ' selected' : '');
+                item.onclick = (function(c) {
+                    return function() { tempEditColor = c; buildEditCatGrid(); };
+                })(cat.color);
+                var dot = document.createElement('span');
+                dot.className = 'cat-grid-dot';
+                dot.style.background = cat.color;
+                item.appendChild(dot);
+                var lbl = document.createElement('span');
+                lbl.textContent = cat.name;
+                item.appendChild(lbl);
+                grid.appendChild(item);
+            });
+        }
+
+        function openEditModal(pin) {
+            currentEditingPin = pin;
+            document.getElementById('editLabel').value = pin.label;
+            tempEditColor = pin.color;
+            tempPhotoData = pin.photo || null;
+            buildEditCatGrid();
+            updatePhotoPreview();
+            document.getElementById('editModalOverlay').classList.add('active');
+            setTimeout(function() { document.getElementById('editLabel').focus(); }, 50);
+        }
+
+        function closeEditModal() { document.getElementById('editModalOverlay').classList.remove('active'); currentEditingPin = null; tempPhotoData = null; tempEditColor = null; }
+
+        function saveEditModal() {
+            if (!currentEditingPin) return;
+            currentEditingPin.label = document.getElementById('editLabel').value.trim();
+            currentEditingPin.color = tempEditColor || currentEditingPin.color;
+            currentEditingPin.photo = tempPhotoData;
+            render();
+            showToast('Pin updated');
+            closeEditModal();
+        }
+
+        function deleteCurrentPin() {
+            if (!currentEditingPin) return;
+            var pin = currentEditingPin;
+            pins = pins.filter(function(p) { return p !== pin; });
+            lines = lines.filter(function(l) { return l.startPin !== pin && l.endPin !== pin; });
+            render();
+            showToast('Pin deleted');
+            closeEditModal();
+        }
+
+        document.getElementById('editLabel').addEventListener('keypress', function(e) { if (e.key === 'Enter') saveEditModal(); });
+
+        /* ========================================================
+           PHOTO HANDLING
+        ======================================================== */
+        function triggerPhotoUpload() { document.getElementById('photoFileInput').click(); }
+        function handlePhotoUpload(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { showToast('Photo too large (max 5 MB)'); return; }
+            var reader = new FileReader();
+            reader.onload = function(ev) { tempPhotoData = ev.target.result; updatePhotoPreview(); };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+        function removePhoto() { tempPhotoData = null; updatePhotoPreview(); }
+        function updatePhotoPreview() {
+            var img = document.getElementById('photoPreview');
+            var text = document.getElementById('uploadText');
+            var rmBtn = document.getElementById('removePhotoBtn');
+            var area = document.getElementById('photoUploadArea');
+            if (tempPhotoData) { img.src = tempPhotoData; img.style.display = 'block'; text.style.display = 'none'; rmBtn.style.display = 'flex'; area.classList.add('has-photo'); }
+            else { img.style.display = 'none'; img.src = ''; text.style.display = 'block'; rmBtn.style.display = 'none'; area.classList.remove('has-photo'); }
+        }
+
+        /* ========================================================
+           GRID / UI CONTROLS
+        ======================================================== */
+        function toggleGrid() { showGrid = !showGrid; document.getElementById('gridToggle').textContent = '\uD83D\uDD32 ' + (showGrid ? 'ON' : 'OFF'); render(); }
+        function updateGrid() { gridSize = parseInt(document.getElementById('gridSize').value); render(); }
+        function toggleTutorial() { document.getElementById('tutorial').classList.toggle('minimized'); }
+
+        /* ========================================================
+           TOAST
+        ======================================================== */
+        function showToast(msg) {
+            var t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(function() { t.classList.remove('show'); }, 2200);
+        }
+
+        /* ========================================================
+           EXPORT PNG
+        ======================================================== */
+        function exportToPNG() {
+            var c2 = document.createElement('canvas');
+            c2.width = canvas.width; c2.height = canvas.height;
+            var e = c2.getContext('2d');
+            e.fillStyle = '#fff'; e.fillRect(0, 0, c2.width, c2.height);
+            e.drawImage(canvas, 0, 0);
+            var link = document.createElement('a');
+            var biz = document.getElementById('businessName').value.trim().replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '-') || 'pos-map';
+            link.download = biz + '-' + new Date().toISOString().split('T')[0] + '.png';
+            link.href = c2.toDataURL();
+            link.click();
+            showToast('PNG exported');
+        }
+
+        /* ========================================================
+           PDF: reusable header with business name on every page
+        ======================================================== */
+        function drawPDFHeader(pdf, pageW, margin, leftTitle) {
+            var bizName = document.getElementById('businessName').value.trim();
+            pdf.setFillColor(44, 62, 80);
+            pdf.rect(0, 0, pageW, 50, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(16);
+            pdf.text(leftTitle, margin, 32);
+            if (bizName) {
+                pdf.setFontSize(14);
+                pdf.setTextColor(255, 220, 120);
+                pdf.text(bizName, pageW - margin, 32, { align: 'right' });
+            }
+            pdf.setFontSize(8);
+            pdf.setTextColor(160, 160, 160);
+            pdf.text('Generated: ' + new Date().toLocaleString(), pageW - margin, 45, { align: 'right' });
+        }
+
+        /* ========================================================
+           EXPORT PDF
+        ======================================================== */
+        async function exportToPDF() {
+            if (!window.jspdf || !window.jspdf.jsPDF) { showToast('PDF library not loaded'); return; }
+            var jsPDF = window.jspdf.jsPDF;
+
+            var bizName = document.getElementById('businessName').value.trim();
+            if (!bizName) { showToast('Please enter a business name first'); document.getElementById('businessName').focus(); return; }
+
+            showToast('Generating PDF...');
+
+            var pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
+            var pageW = pdf.internal.pageSize.getWidth();
+            var pageH = pdf.internal.pageSize.getHeight();
+            var margin = 40;
+
+            // ---- PAGE 1: MAP ----
+            drawPDFHeader(pdf, pageW, margin, 'POS Equipment Map');
+
+            var savedGrid = showGrid;
+            showGrid = false; render();
+            var mapDataURL = canvas.toDataURL('image/png');
+            showGrid = savedGrid; render();
+
+            var mapY = 58;
+            var availW = pageW - margin * 2;
+            var availH = pageH - mapY - 20;
+            var aspect = canvas.width / canvas.height;
+            var imgW = availW, imgH = imgW / aspect;
+            if (imgH > availH) { imgH = availH; imgW = imgH * aspect; }
+            var imgX = margin + (availW - imgW) / 2;
+
+            pdf.addImage(mapDataURL, 'PNG', imgX, mapY, imgW, imgH);
+
+            var photoPins = [];
+            pins.forEach(function(p, i) {
+                if (p.photo) {
+                    photoPins.push({ pin: p, pinIndex: i + 1, photoIndex: photoPins.length + 1 });
+                }
+            });
+
+            var scaleX = imgW / canvas.width;
+            var scaleY = imgH / canvas.height;
+
+            photoPins.forEach(function(pp) {
+                var px = imgX + pp.pin.x * scaleX;
+                var py = mapY + pp.pin.y * scaleY;
+                pdf.setDrawColor(0, 123, 255);
+                pdf.setLineWidth(1.5);
+                pdf.circle(px, py, 9);
+            });
+
+            // ---- PAGE 2: COLOR LEGEND ----
+            pdf.addPage('letter', 'landscape');
+            drawPDFHeader(pdf, pageW, margin, 'Color Legend');
+
+            var ly = 74;
+            pdf.setFontSize(10);
+            pdf.setTextColor(130, 130, 130);
+            pdf.text('Color', margin + 4, ly);
+            pdf.text('Category', margin + 44, ly);
+            pdf.text('Pin Count', margin + 300, ly);
+            ly += 5;
+            pdf.setDrawColor(200, 200, 200);
+            pdf.line(margin, ly, pageW - margin, ly);
+            ly += 18;
+
+            categories.forEach(function(cat) {
+                var r = parseInt(cat.color.slice(1, 3), 16);
+                var g = parseInt(cat.color.slice(3, 5), 16);
+                var b = parseInt(cat.color.slice(5, 7), 16);
+
+                pdf.setFillColor(r, g, b);
+                pdf.circle(margin + 12, ly - 4, 8, 'F');
+
+                pdf.setTextColor(50, 50, 50);
+                pdf.setFontSize(12);
+                pdf.text(cat.name, margin + 44, ly);
+
+                var count = pins.filter(function(p) { return p.color.toLowerCase() === cat.color.toLowerCase(); }).length;
+                pdf.setTextColor(100, 100, 100);
+                pdf.setFontSize(11);
+                pdf.text(String(count), margin + 310, ly);
+
+                ly += 28;
+            });
+
+            if (photoPins.length > 0) {
+                ly += 12;
+                pdf.setDrawColor(200, 200, 200);
+                pdf.line(margin, ly, pageW - margin, ly);
+                ly += 20;
+                pdf.setFontSize(11);
+                pdf.setTextColor(0, 123, 255);
+                pdf.text(photoPins.length + ' photo(s) attached  --  see Photo Appendix pages', margin, ly);
+            }
+
+            // ---- PHOTO APPENDIX ----
+            if (photoPins.length > 0) {
+                var photoStartPage = pdf.internal.getNumberOfPages() + 1;
+
+                for (var i = 0; i < photoPins.length; i++) {
+                    var pp = photoPins[i];
+                    pdf.addPage('letter', 'landscape');
+                    var catMatch = getCategoryByColor(pp.pin.color);
+                    var catName = catMatch ? catMatch.name : '';
+                    var titleStr = 'Photo #' + pp.photoIndex + '  -  Pin ' + pp.pinIndex + ': ' + (pp.pin.label || '(unlabeled)');
+                    if (catName) titleStr += '  [' + catName + ']';
+                    if (titleStr.length > 65) titleStr = titleStr.slice(0, 62) + '...';
+                    drawPDFHeader(pdf, pageW, margin, titleStr);
+
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(120, 120, 120);
+                    pdf.text('Photo ' + pp.photoIndex + ' of ' + photoPins.length, margin, 45);
+
+                    try {
+                        var photoAvailH = pageH - 70;
+                        var photoAvailW = pageW - margin * 2;
+                        var imgDims = await getImageDimensions(pp.pin.photo);
+                        var pAspect = imgDims.width / imgDims.height;
+                        var drawW = photoAvailW, drawH = drawW / pAspect;
+                        if (drawH > photoAvailH) { drawH = photoAvailH; drawW = drawH * pAspect; }
+                        var drawX = margin + (photoAvailW - drawW) / 2;
+                        var drawY = 56 + (photoAvailH - drawH) / 2;
+                        pdf.addImage(pp.pin.photo, 'JPEG', drawX, drawY, drawW, drawH);
+                    } catch(err) {
+                        pdf.setTextColor(200, 50, 50);
+                        pdf.setFontSize(12);
+                        pdf.text('(Photo could not be rendered)', pageW / 2, pageH / 2, { align: 'center' });
+                    }
+                }
+
+                // Clickable links from map page
+                pdf.setPage(1);
+                photoPins.forEach(function(pp, idx) {
+                    var px = imgX + pp.pin.x * scaleX;
+                    var py = mapY + pp.pin.y * scaleY;
+                    pdf.link(px - 12, py - 12, 24, 24, { pageNumber: photoStartPage + idx });
+                });
+            }
+
+            var safeFileName = bizName.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '-') || 'pos-map';
+            pdf.save(safeFileName + '-' + new Date().toISOString().split('T')[0] + '.pdf');
+            showToast('PDF exported with ' + photoPins.length + ' photo(s)');
+        }
+
+        function getImageDimensions(dataURL) {
+            return new Promise(function(resolve, reject) {
+                var img = new Image();
+                img.onload = function() { resolve({ width: img.width, height: img.height }); };
+                img.onerror = reject;
+                img.src = dataURL;
+            });
+        }
+
+        /* ========================================================
+           INIT
+        ======================================================== */
+        document.getElementById('businessName').value = loadBusinessName();
+        renderSwatches();
+        renderLegendBar();
+        render();
+    </script>
+</body>
+</html>
